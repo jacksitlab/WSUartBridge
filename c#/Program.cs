@@ -32,7 +32,10 @@ namespace WSUartBridge
 
             initComPort(comPort, baudrate);
             initServer(port);
-            Console.Read();
+            while(true)
+	    {
+		System.Threading.Thread.Sleep(100);
+  	    }
             close();
 
         }

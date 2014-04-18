@@ -2,56 +2,20 @@
 <head>
 <title></title>
 <script src="js/jquery-1.11.0.min.js" ></script>
+<script src="js/guicomposer.js" ></script>
 <script>
 
 var wsUri = "ws://localhost:4649/MSPUart";
 var output;
+var gc;
 
 function init(){
   output = document.getElementById("output");
-  testWebSocket();
+    websocket = new WebSocket(wsUri);
+    gc=new guicomposer(websocket);
 }
 
-function testWebSocket(){
-  websocket = new WebSocket(wsUri);
 
-  websocket.onopen = function(evt){
-    onOpen(evt)
-  };
-
-  websocket.onclose = function(evt){
-    onClose(evt)
-  };
-
-  websocket.onmessage = function(evt){
-    onMessage(evt)
-  };
-
-  websocket.onerror = function(evt){
-    onError(evt)
-  };
-}
-
-function onOpen(evt){
-  writeToScreen("CONNECTED");
-}
-
-function onClose(evt){
-  writeToScreen("DISCONNECTED");
-}
-
-function onMessage(evt){
-  writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data + '</span>');
-}
-
-function onError(evt){
-  writeToScreen('<span style="color: red;">ERROR: ' + evt.data + '</span>');
-}
-
-function doSend(message){
-  writeToScreen("SENT: " + message);
-  websocket.send(message);
-}
 
 function writeToScreen(message){
   var pre = document.createElement("p");
@@ -63,7 +27,7 @@ function writeToScreen(message){
 $(function(){
   init();
   $('#btn_send').click(function(evt){
-    doSend($('#tbx_cli').val());
+    gc.ReadMem($('#tbx_cli').val());
   });
 });
 </script>

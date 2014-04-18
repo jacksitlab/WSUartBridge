@@ -15,7 +15,8 @@ namespace WSUartBridge
 
         void UARTBridgeService_OnReceive(object sender, MessageEventArgs e)
         {
-            Console.WriteLine("COM=>WS:" + e.Message);
+            Console.WriteLine("COM=>WS:");
+	    printHex(e.Message);
             Send(e.Message);
         }
 
@@ -26,11 +27,16 @@ namespace WSUartBridge
             base.OnMessage(e);
 //            if (e.Type == WebSocketSharp.Opcode.TEXT)
             {
-                Console.WriteLine("WS=>COM:" + e.Data);
+                Console.WriteLine("WS=>COM:");
+		printHex(e.Data);
                 SerialPortSingleton.GetInstance().Write(e.Data);
             }
         }
-
+	private void printHex(string s)
+	{
+	   for(int i=0;i<s.Length;i++)
+		Console.Write("0x{0:X2} ",(int)s[i]);
+	}
         protected override void OnOpen()
         {
             base.OnOpen();
