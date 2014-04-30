@@ -16,6 +16,7 @@ namespace WSUartBridge
         private System.Threading.ThreadStart tStart;
         private System.Threading.Timer tTimeOut;
         private string mStrBuffer = "";
+        private List<byte> mByteBuffer = new List<byte>();
         private int mLastReceivedByteTick = 0;
         public event EventHandler<MessageEventArgs> OnReceive;
 
@@ -28,9 +29,32 @@ namespace WSUartBridge
         {
             mComport = comPort;
             mBaudrate = baudrate;
-            mSerial = new System.IO.Ports.SerialPort(mComport, mBaudrate);
+            mSerial = new System.IO.Ports.SerialPort(mComport, mBaudrate,
+                System.IO.Ports.Parity.None, 
+                8, 
+                System.IO.Ports.StopBits.One);
+
+            mSerial.Handshake = System.IO.Ports.Handshake.None;
+            //mSerial.DataReceived += new System.IO.Ports.SerialDataReceivedEventHandler(mSerial_DataReceived);
             mSerial.Open();
             Listen();
+        //    tTimeOut = new System.Threading.Timer(new System.Threading.TimerCallback(_onTick), this,     300, 300);
+        }
+
+        void mSerial_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
+        {
+            byte[] buffer = new byte[1024];
+            int br = 0;
+            br = mSerial.Read(buffer, offset, buffer.Length - offset);
+            if (br > 0)
+            {
+                while (br-- > 0)
+                {
+                    mByteBuffer.Add(buffer[offset++]);
+                }
+            }
+          //  mStrBuffer = Encoding.ASCII.GetString(mByteBuffer.ToArray());
+            mLastReceivedByteTick = Environment.TickCount;
         }
         public void Listen()
         {
@@ -47,47 +71,49 @@ namespace WSUartBridge
             if (now - mLastReceivedByteTick > TIMEOUT)
                 onReceive();
         }
+        int offset = 0;
+            
         private void _run()
         {
             byte[] buffer = new byte[1024];
             int br = 0;
-            int offset = 0;
             while (!stopFlag)
             {
-                byte b=(byte)mSerial.ReadByte();
-                mStrBuffer += (char)b;
+                //byte b=(byte)mSerial.ReadByte();
+                br = mSerial.Read(buffer, offset, buffer.Length - offset);
+                if (br > 0)
+                {
+                    while (br-->0)
+                    {
+                        mByteBuffer.Add(buffer[offset++]);
+                    }
+                }
+                mStrBuffer = Encoding.ASCII.GetString(mByteBuffer.ToArray());
                 mLastReceivedByteTick = Environment.TickCount;
-        //        _parse(buffer, offset);
             }
         }
 
-        private int _parse(byte[] buffer, int maxIndex)
-        {
-            string s = ASCIIEncoding.UTF8.GetString(buffer, 0, maxIndex);
-            int idxStart = s.IndexOf('{');
-            int idxEnd = s.IndexOf('}');
-            if (idxStart >= 0 && idxEnd > idxStart)
-            {
-                //send through websocket
-                onReceive(s.Substring(idxStart, idxEnd - idxStart));
-                
-                s = s.Substring(idxEnd);
-            }
-            return 0;
-        }
         private void onReceive()
         {
-            if (mStrBuffer != string.Empty)
+            //if (mStrBuffer != string.Empty)
+            if(mByteBuffer.Count>0)
             {
-                onReceive(mStrBuffer);
+                //onReceive(mStrBuffer);
+                onReceive(mByteBuffer);
+                mByteBuffer.Clear();
                 mStrBuffer = "";
+                offset = 0;
             }
         }
-        protected virtual void onReceive(string p)
+
+        private void onReceive(List<byte> bb)
         {
             if (OnReceive != null)
-                OnReceive(this, new MessageEventArgs(p));
+            {
+                OnReceive(this, new MessageEventArgs(bb.ToArray()));
+            }
         }
+       
         public void StopListen()
         {
             stopFlag = true;
@@ -114,13 +140,17 @@ namespace WSUartBridge
         {
             mSerial.Write(p+"\r");
         }
+        public void Write(byte[] b, int len)
+        {
+            mSerial.Write(b, 0, len);
+        }
     }
     public class MessageEventArgs : EventArgs
     {
-        protected string mMessage="";
-        public string Message
+        protected byte[] mMessage;
+        public byte[] Message
         {get{return mMessage;}}
-        public MessageEventArgs(string msg)
+        public MessageEventArgs(byte[] msg)
         {
             mMessage = msg;
         }

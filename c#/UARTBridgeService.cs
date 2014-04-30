@@ -9,34 +9,60 @@ namespace WSUartBridge
     {
         public UARTBridgeService()
         {
-            if(SerialPortSingleton.IsRunning)
+            if (SerialPortSingleton.IsRunning)
                 SerialPortSingleton.GetInstance().OnReceive += new EventHandler<MessageEventArgs>(UARTBridgeService_OnReceive);
         }
 
         void UARTBridgeService_OnReceive(object sender, MessageEventArgs e)
         {
-            Console.WriteLine("COM=>WS:");
-	    printHex(e.Message);
-            Send(e.Message);
+            Console.WriteLine("\nCOM=>WS:");
+            printHex(e.Message);
+            Send(bytes2string(e.Message));
         }
+
+       
 
 
 
         protected override void OnMessage(WebSocketSharp.MessageEventArgs e)
         {
             base.OnMessage(e);
-//            if (e.Type == WebSocketSharp.Opcode.TEXT)
+            //            if (e.Type == WebSocketSharp.Opcode.TEXT)
             {
-                Console.WriteLine("WS=>COM:");
-		printHex(e.Data);
-                SerialPortSingleton.GetInstance().Write(e.Data);
+                Console.WriteLine("\nWS=>COM:");
+                byte[] buffer = new byte[1024];
+                buffer = string2bytes(e.Data);// Encoding.UTF8.GetBytes(e.Data);
+                printHex(buffer);
+                SerialPortSingleton.GetInstance().Write(buffer, buffer.Length);
             }
         }
-	private void printHex(string s)
-	{
-	   for(int i=0;i<s.Length;i++)
-		Console.Write("0x{0:X2} ",(int)s[i]);
-	}
+        private string bytes2string(byte[] b)
+        {
+            string s = "";
+            for(int i=0;i<b.Length;i++)
+                s+=BitConverter.ToString(b,i,1);
+            
+            return s;
+        }
+        private byte[] string2bytes(string s)
+        {
+            byte[] b = new byte[s.Length / 2];
+            for (int i = 0; i < s.Length / 2; i++)
+            {
+                b[i]=(byte)Convert.ToByte(s.Substring(2 * i, 2),16);
+            }
+            return b;
+        }
+        private void printHex(string s)
+        {
+            for (int i = 0; i < s.Length; i++)
+                Console.Write("0x{0:X2} ", (int)s[i]);
+        }
+        private void printHex(byte[] p)
+        {
+            for (int i = 0; i < p.Length; i++)
+                Console.Write("0x{0:X2} ", (int)p[i]);
+        }
         protected override void OnOpen()
         {
             base.OnOpen();
@@ -45,6 +71,6 @@ namespace WSUartBridge
         {
             base.OnClose(e);
         }
-        
+
     }
 }

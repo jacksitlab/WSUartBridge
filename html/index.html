@@ -8,15 +8,6 @@
 var wsUri = "ws://localhost:4649/MSPUart";
 var output;
 var gc;
-
-function init(){
-  output = document.getElementById("output");
-    websocket = new WebSocket(wsUri);
-    gc=new guicomposer(websocket);
-}
-
-
-
 function writeToScreen(message){
   var pre = document.createElement("p");
   pre.style.wordWrap = "break-word";
@@ -24,10 +15,24 @@ function writeToScreen(message){
   output.appendChild(pre);
 }
 
+function init(){
+  output = document.getElementById("output");
+    websocket = new WebSocket(wsUri);
+    gc=new guicomposer(websocket);
+	gc.onDebug = writeToScreen;
+}
+
+
+
+
+
 $(function(){
   init();
   $('#btn_send').click(function(evt){
-    gc.ReadMem($('#tbx_cli').val());
+    gc.ReadMem($('#tbx_cli').val(),1,writeToScreen);
+  });
+  $('#btn_send2').click(function(evt){
+    gc.WriteMem($('#tbx_cli2').val(),1,writeToScreen);
   });
 });
 </script>
@@ -35,8 +40,10 @@ $(function(){
 </head>
 <body>
 <div id="input">
-<input type="text" id="tbx_cli" />
-<button id="btn_send">Send</button>
+<span >ReadMem:</span><input type="text" id="tbx_cli" />
+<button id="btn_send">Send</button><br /><br />
+<span>WriteMem:</span><input type="text" id="tbx_cli2" />
+<button id="btn_send2">Send</button>
 </div>
 <div id="output"></div>
 </body>
