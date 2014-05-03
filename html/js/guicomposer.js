@@ -1,3 +1,12 @@
+Number.prototype.printHex = function(bits)
+{
+	var zeros = '';
+	var len = bits/4;
+	for(var i=0;i<len;i++)
+		zeros+='0';	
+	return (""+zeros + this.toString(16)).substr(-1*len).toUpperCase();
+}
+
 function guicomposer(websocket)
 {
 	this.ws = websocket;
@@ -7,16 +16,16 @@ function guicomposer(websocket)
 	
 	this.ws.onopen = function(evt){
 		_self.debug("Connected");
-    //onOpen(evt)
+ 
    };
 
   this.ws.onclose = function(evt){
 	  _self.debug("Disconnected");
-    //onClose(evt)
+    
   };
 
   this.ws.onmessage = function(evt){
-	  var msg = evt.data;//_self.string2hex(evt.data);
+	  var msg = evt.data;
        _self.cb(msg);
   };
 
@@ -34,43 +43,39 @@ function guicomposer(websocket)
 
 guicomposer.prototype.ws=null;
 
-guicomposer.prototype.ReadMem = function(adr,len,callback)
-	{
-		this.cb = callback;
-		var str="C1"+adr;//this.hex2String("C1"+adr);
-		this.ws.send(str);	
-	};
-guicomposer.prototype.WriteMem = function(adr,val)
-	{
-		var str="81"+adr+val;//this.hex2String("81"+adr+val);;
-		this.ws.send(str);	
-	};
 /*
- * =========convert hex-string into string==========
- * input: hex-string(e.g.: FE02AC48)
- * output: string with charcodes (e.g.: 0xFE,0x02,0xAC,0x48)
- */
-guicomposer.prototype.hex2String = function(array) {
-  var result = "";
-  for (var i = 0; i < array.length; i=i+2) {
-  		var x=parseInt(array[i], 16);
-		if(i+1<array.length)
-		{
-			x=x*16;
-			x+=parseInt(array[i+1], 16);
-    	}  	 	
-  	 	result += String.fromCharCode(x);
-	}
-  return result;
+ * Read Memory Command
+ * 	adr: 32bit address value | hexstring | (e.g. "00002C01")
+ * 	len: len of bytes to read  (max. 63)
+ *		callback: function cb for controller response
+*/
+guicomposer.prototype.ReadMem = function(adr,len,callback)
+{
+	this.cb = callback;
+	var ilen = parseInt(len);
+	if(ilen>63)
+		ilen=63;
+	var cmdByte=0xC0 + ilen;
+	var str=cmdByte.toString(16)+adr;
+	this.ws.send(str);	
 };
-guicomposer.prototype.string2hex = function(s){
-	
-	var result ="";
-	for(var i=0;i<s.length;i++)
+
+/*
+ * Read Memory Command
+ * 	adr: 32bit address value | hexstring | (e.g. "00002C01")
+ * 	val: values to write | hexstring
+ *		callback: function cb for controller response
+*/
+guicomposer.prototype.WriteMem = function(adr,val,callback)
+{
+	this.cb = callback;
+	var len = val.length/2;
+	if(len>63)
 	{
-		var x =parseInt(s[i]);	
-		result+=" 0x"+x.toString(16);
-		
+		len=63;
+		val = val.substr(0,2*len);	
 	}
-	return result;
+	var cmdByte = 0x80 +  len;
+	var str=cmdByte.toString(16)+adr+val;
+	this.ws.send(str);	
 };
