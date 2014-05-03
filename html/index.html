@@ -1,13 +1,18 @@
 <html>
 <head>
 <title></title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="js/themes/base/jquery-ui.css">
 <script src="js/jquery-1.11.0.min.js" ></script>
+<script type="text/javascript" src="js/jquery-ui-1.10.4.min.js"></script>
 <script src="js/guicomposer.js" ></script>
+<script src="js/msp430f5510.js" ></script>
 <script>
 
 var wsUri = "ws://localhost:4649/MSPUart";
 var output;
 var gc;
+var msp;
 function writeToScreen(message){
   var pre = document.createElement("p");
   pre.style.wordWrap = "break-word";
@@ -20,31 +25,153 @@ function init(){
     websocket = new WebSocket(wsUri);
     gc=new guicomposer(websocket);
 	gc.onDebug = writeToScreen;
+	msp = new msp430f5510();
 }
-
-
-
-
-
+function _setBits(val)
+{
+	var x=val;
+	for(var i=0;i<8;i++)
+	{
+		var btn_id = "bit"+i;
+		if(x&0x01==0x01)
+		{	
+			$('#'+btn_id).prop('checked', true);
+			$('label[for='+btn_id+']').addClass('ui-state-active');
+		}
+		else
+		{	
+			$('#'+btn_id).prop('checked', false);	
+			$('label[for='+btn_id+']').removeClass('ui-state-active');
+		}x=x>>1;
+	}
+}
+//onload
 $(function(){
   init();
   $('#btn_send').click(function(evt){
-    gc.ReadMem($('#tbx_cli').val(),1,writeToScreen);
+    gc.ReadMem($('#tbx_readmem_adr').val(),$('#tbx_readmem_len').val(),writeToScreen);
   });
   $('#btn_send2').click(function(evt){
-    gc.WriteMem($('#tbx_cli2').val(),1,writeToScreen);
+    gc.WriteMem($('#tbx_writemem_adr').val(),$('#tbx_writemem_values').val(),writeToScreen);
+  });
+  $('.btn').button();
+  $( "#toolbar > input" ).button();
+  msp.FillMenu("#reg_sel");
+  $( "#reg_sel" ).on( "menuselect", function( event, ui ) {
+		//alert(ui.item.html());  
+		var obj=ui.item.children('.reg_adr');
+		var reg_adr = parseInt(obj.html());
+		$('#reg_address').val('0x'+reg_adr.printHex(16));
+		obj=  ui.item.children('.reg_name');		
+  		$('#reg_name').val((obj.html()));
+  		obj=  ui.item.children('.reg_val');		
+  		//$('#reg_value').val('0x'+parseInt(obj.html()).printHex(8));
+		var v=msp.GetValue(reg_adr);
+		if(v<0)
+			v=0;
+		$('#reg_value').val('0x'+v.printHex(8));  		
+  		_setBits(v);
+  		
+  } );
+  $("#toolbar > .bits").click(function(evt){
+		
+		var s=0;
+		for(var i=7;i>=0;i--)
+		{
+			s+=($('#bit'+i).is(':checked'))?1:0;
+			if(i>0)
+			  s<<=1;
+			
+		}
+		$('#reg_value').val("0x"+s.printHex(8));//toString(16));	  
+		//alert($('#toolbar').html());  
+  });
+  $('#btn_reg_set').click(function(evt){
+		//get reg_adr
+		var reg_adr=0;
+		var reg_val=0;
+		reg_adr = parseInt($('#reg_address').val());
+		reg_val = parseInt($('#reg_value').val());
+		
+		//get reg_val
+		var res=msp.SetValue(reg_adr,reg_val);		
+		if(res==true)
+			alert('register(0x'+reg_adr.printHex(16)+') set to 0x'+ reg_val.printHex(8));
+		else
+			alert('register(0x'+reg_adr.printHex(16)+') not found');
+		  
   });
 });
 </script>
+<style type="text/css">
+body{height: 100%;}
 
+#toolbar {
+    padding: 4px;
+    display: inline-block;
+font-size: x-small;
+ }
+ #selectionrow, #input
+ {
+	font-size: x-small; 
+ }
+</style>
 </head>
 <body>
-<div id="input">
-<span >ReadMem:</span><input type="text" id="tbx_cli" />
-<button id="btn_send">Send</button><br /><br />
-<span>WriteMem:</span><input type="text" id="tbx_cli2" />
-<button id="btn_send2">Send</button>
+<h1>MCU Remote Control</h1>
+<span >GuiComposer inspired and compatible(<a target="_blank" href="http://processors.wiki.ti.com/index.php/ProgramModelUart_GuiComposer">link</a>)</span>
+<hr />
+<div id="input" style="float:none;">
+	<table>
+		<tr><td colspan="3">ReadMem:</td><td style="width:20px;"></td><td colspan="3">WriteMem:</td></tr> 
+		<tr>
+			<td>Adr:</td><td><input type="text" id="tbx_readmem_adr" style="width:100px;"/></td><td>(32bit)</td>
+			<td></td>
+			<td>Adr:</td><td><input type="text" id="tbx_writemem_adr" style="width:100px;"/></td><td>(32bit)</td>
+		</tr>
+		<tr>
+			<td>Len:</td><td><input type="text" id="tbx_readmem_len"  style="width:50px;"/></td><td>(max. 63) </td>
+			<td></td>
+			<td>Values:</td><td><input type="text" id="tbx_writemem_values" /></td><td>(max. 63 bytes) </td>
+		</tr>
+		<tr>
+			<td colspan="3"><button id="btn_send">Send</button></td>
+			<td></td>
+			<td colspan="3"><button id="btn_send2">Send</button></td>
+		</tr>
+		<tr><td colspan="3">Example:</td></tr> 
+		<tr><td colspan="3">Reading P1IN</td><td></td><td colspan="3">Writing P1OUT</td></tr> 
+		
+		<tr>
+			<td colspan="3">Adr:00000200 | Len:1 <br />Sending: 0xC1 0x00 0x00 0x02 0x00 <br /> Response: 0xC1 0xXX</td>
+			<td></td>
+			<td colspan="3">Adr:00000202 | Values:0A <br />Sending: 0x81 0x00 0x00 0x02 0x00 0x0A <br /> Response: 0x81</td>					
+		</tr>
+	</table>
 </div>
-<div id="output"></div>
+<hr />
+<div id="selectionrow" style="float:none; width:100%; background:none;" >
+	<div id="toolbar" class="ui-widget-header ui-corner-all" style="float:none;">
+		<input type="text" id="reg_name" style="width:100px;" disabled="disabled">
+		<input type="text" id="reg_address" style="width:70px;margin-right:20px;" disabled="disabled">		
+  		<input type="checkbox" id="bit7" class="bits"><label for="bit7">Bit7</label>
+  		<input type="checkbox" id="bit6" class="bits"><label for="bit6">Bit6</label>
+  		<input type="checkbox" id="bit5" class="bits"><label for="bit5">Bit5</label>
+  		<input type="checkbox" id="bit4" class="bits"><label for="bit4">Bit4</label>
+  		<input type="checkbox" id="bit3" class="bits"><label for="bit3">Bit3</label>
+  		<input type="checkbox" id="bit2" class="bits"><label for="bit2">Bit2</label>
+  		<input type="checkbox" id="bit1" class="bits"><label for="bit1">Bit1</label>
+  		<input type="checkbox" id="bit0" class="bits"><label for="bit0">Bit0</label>
+  		<input type="text" id="reg_value" style="width:60px; margin-left:10px;">
+	</div>
+	<div style="float:none;display:inline-block; margin-left:30px;">
+		<button class="btn" id="btn_reg_set">Übernehmen</button>
+		<button class="btn" id="btn_reg_read">Auslesen</button>	
+	</div>
+	<br />
+	<ul id="reg_sel" style="display:inline-block;margin-top:10px;"></ul>
+</div>
+<hr />
+<div id="output" style="float:none; overflow-y:scroll;"></div>
 </body>
 </html>
