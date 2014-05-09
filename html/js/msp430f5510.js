@@ -4,7 +4,7 @@ function Register(name,adr)
 	this.Address = adr;	
 	this.Value =0x00;
 }
-function Port(name,pin,pdir,pout,psel,ppur)
+function Port(name,pin,pout,pdir,psel,ppur)
 {
 	this.Name=name;
 	this.InputAdr = new Register("PIN",pin);

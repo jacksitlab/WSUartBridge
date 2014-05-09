@@ -1,0 +1,239 @@
+<html>
+<head>
+<title></title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="js/themes/base/jquery-ui.css">
+<link rel="stylesheet" href="css/knobKnob.css">
+<link rel="stylesheet" href="css/farbtastic.css" type="text/css" />
+<script src="js/jquery-1.11.0.min.js" ></script>
+<script src="js/jquery-ui-1.10.4.min.js"></script>
+<script src="js/wsuartbridge.js" ></script>
+<script src="js/msp430f5510.js" ></script>
+<script src="js/transform.js" ></script>
+<script src="js/plugins/knobKnob.jquery.js"></script>
+<script src="js/plugins/farbtastic.jquery.js"></script>
+
+<script>
+var wsUri = "ws://localhost:4649/MSPUart";
+var output;
+var gc;
+var msp;
+function writeToScreen(message){
+  var pre = document.createElement("p");
+  pre.style.wordWrap = "break-word";
+  pre.innerHTML = message;
+  output.appendChild(pre);
+}
+
+function init(){
+  output = document.getElementById("output");
+  websocket = new WebSocket(wsUri);
+  gc=new wsuartbridge(websocket);
+  gc.onDebug = writeToScreen;
+  msp = new msp430f5510();
+}
+</script>
+<style type="text/css">
+body{height: 100%;}
+input{width: 80px; text-align: center;}
+#rgbcontroltable td{ text-align:center;}
+</style>
+</head>
+<body>
+<h1>MCU Remote Control - Example 1 (RGB LED Control)</h1>
+<div id="view" style="float:right; right:20px; top:6em; width:400px; margin-left:10px;">
+	RGB-LED on Port1(PIN2..4)	
+	<ul>
+		<li>G =>BIT2(TA0.1)</li>
+		<li>B =>BIT3(TA0.2)</li>
+		<li>R =>BIT4(TA0.3)</li>
+	</ul>
+AIM: Configure TimerA0 and configure Pins to control the RGB-LED by PWM signal.	
+<div style="width:inherit; margin:10px auto; border-top:3px solid #000;">
+<table id="rgbcontroltable" style="margin:0 auto;">
+	<tr>
+		<td align="center">R</td>
+		<td align="center">G</td>
+		<td align="center">B</td>	
+	</tr>
+	<tr>
+		<td valign="center"><input type="text" id="tbx_r_value" value="255" /></td>
+		<td valign="center"><input type="text" id="tbx_g_value" value="255" /></td>
+		<td valign="center"><input type="text" id="tbx_b_value" value="255" /></td>		
+	</tr>
+        <tr>
+                <td colspan="3" align="center">
+                        <input type="checkbox" id="ckbx"  >Autosend</input>
+                </td>
+        </tr>
+	<tr>
+		<td colspan="3" align="center">
+			<div id="color_result" style="margin:0 30px;width:120px; height:120px;"></div>
+		</td>
+	</tr>
+	<tr><td><input type="text" id="color" style="visibility:hidden;" /></td></tr>
+</table>
+
+</div>
+</div>
+<table summary="" style="border-right: 3px solid #CCC;">
+	<tr>
+		<td align="center">MSP Code</td>
+		<td align="center">GC WriteMem Code</td>
+		<td></td>	
+		<td>Response</td>
+	</tr>
+	<tr>
+		<td colspan="4" style="border-top:double  #000;"><b>Configure Pins to FunctionSelect(Timer Outputs):</b></td>	
+	</tr>	
+	<tr>
+		<td align="left">P1SEL=0x1C;</td>
+		<td align="center" id="cmd1" >0000020A1C</td>
+		<td><button class="runbtn" id="btn_cmd1">Run</button></td>
+		<td id="cmd1_response"></td>	
+	</tr>
+	
+		<td align="left">P1DIR=0x1C;</td>
+		<td align="center" id="cmd2">000002041C</td>
+		<td><button class="runbtn" id="btn_cmd2">Run</button></td>
+		<td id="cmd2_response"></td>	
+	</tr>
+	<tr>
+		<td colspan="4" style="border-top:double  #000;"><b>Configure Timer TA0 Registers:</b></td>	
+	</tr>	
+	<tr>
+		<td align="left">TA0CCR0 = 256-1;</td>
+		<td align="center"  id="cmd3">00000352FF</td>
+		<td><button class="runbtn" id="btn_cmd3">Run</button></td>
+		<td id="cmd3_response"></td>	
+	</tr>
+	<tr>
+		<td align="left">TA0CCTL1 = OUTMOD_7; </td>
+		<td align="center" id="cmd4">00000344E0</td>
+		<td><button class="runbtn" id="btn_cmd4">Run</button></td>
+		<td id="cmd4_response"></td>	
+	</tr>
+	
+	<tr>
+		<td align="left">TA0CCR1 = 255;</td>
+		<td align="center" id="cmd5">00000354FF</td>
+		<td><button class="runbtn" id="btn_cmd5">Run</button></td>
+		<td id="cmd5_response"></td>	
+	</tr>
+	<tr>
+		<td align="left">TA0CCTL2 = OUTMOD_7; </td>
+		<td align="center" id="cmd6">00000346E0</td>
+		<td><button class="runbtn" id="btn_cmd6">Run</button></td>
+		<td id="cmd6_response"></td>	
+	</tr>
+	
+	<tr>
+		<td align="left">TA0CCR2 = 127;</td>
+		<td align="center" id="cmd7">000003560F</td>
+		<td><button class="runbtn" id="btn_cmd7">Run</button></td>
+		<td id="cmd7_response"></td>	
+	</tr>
+	<tr>
+		<td align="left">TA0CCTL3 = OUTMOD_7; </td>
+		<td align="center" id="cmd8">00000348E0</td>
+		<td><button class="runbtn" id="btn_cmd8">Run</button></td>
+		<td id="cmd8_response"></td>	
+	</tr>
+	
+	<tr>
+		<td align="left">TA0CCR3 = 0;</td>
+		<td align="center" id="cmd9">0000035800</td>
+		<td><button class="runbtn" id="btn_cmd9">Run</button></td>
+		<td id="cmd9_response"></td>	
+	</tr>
+	
+	<tr>
+		<td align="left">TA0CTL = TASSEL_2 + MC_1 + TACLR;</td>
+		<td align="center" id="cmd10">000003400214</td>
+		<td><button class="runbtn" id="btn_cmd10">Run</button></td>
+		<td id="cmd10_response"></td>	
+	</tr>
+	
+</table>
+
+</table>
+<div id="output" style="visibility:visible;"></div>
+<div  style="position:absolute; right:20px; bottom:30px; width:160px; height:120px;">
+<img id="snapshot" src="image.jpg" width="100%" />
+</div>
+</body>
+</html>
+
+<script type="text/javascript" >
+function _setColor()
+{
+	var r=parseInt($('#tbx_r_value').val());
+	var g=parseInt($('#tbx_g_value').val());
+	var b=parseInt($('#tbx_b_value').val());
+	var color = r.printHex(8)+g.printHex(8)+b.printHex(8);
+	$('#color_result').css('background-color','#'+color);
+}
+var reload = true;
+function reloadImage()
+{
+  var d = new Date();
+  if(reload==true)
+    $('#snapshot').attr("src", "image.jpg?"+d.getTime())
+  setTimeout(reloadImage,1000);
+}
+var autosend=false;
+//onload
+$(function(){
+	init();
+	$('.runbtn').click(function(evt){
+			var i=$(this).prop('id').substr(7);
+			var s = $('#cmd'+i).html();
+						
+			var response_id = "cmd"+i+"_response";
+			currentCmdi = i;
+			currentResponseId = response_id;	
+			gc.WriteMem(s.substr(0,8),s.substr(8),cmd_response);
+	});
+	$('#ckbx').change(function(evt){
+		
+		autosend = this.checked;	
+	});
+	$.farbtastic('#color_result',function(color){
+	    $('#tbx_r_value').val(parseInt('0x'+color.substr(1,2)));
+	    $('#tbx_g_value').val(parseInt('0x'+color.substr(3,2)));
+	    $('#tbx_b_value').val(parseInt('0x'+color.substr(5,2)));
+	});;
+	timer_handle();
+	reloadImage();
+});
+function timer_handle()
+{
+	if(autosend==true)
+	{
+		var r=255-parseInt($('#tbx_r_value').val());
+	var g=255-parseInt($('#tbx_g_value').val());
+	var b=255-parseInt($('#tbx_b_value').val());
+	gc.WriteMem("00000354",g.printHex(8),cmd_response);
+	gc.WriteMem("00000356",b.printHex(8),cmd_response);
+	gc.WriteMem("00000358",r.printHex(8),cmd_response);
+	//alert("sending #"+ r.printHex(8)+g.printHex(8)+b.printHex(8));
+	}
+	setTimeout(timer_handle,2500);
+}
+var currentCmdi=0;
+var currentResponseId = "";
+function cmd_response(msg)
+{
+	if(currentCmdi==0)
+		$('#'+currentResponseId).append("|"+msg);
+	else
+	{
+		var s = $('#cmd'+currentCmdi).html();
+		$('#'+currentResponseId).html(msg);
+		gc.ReadMem(s.substr(0,8),2,cmd_response);
+		currentCmdi=0;	
+	}
+
+}
+
+</script>
